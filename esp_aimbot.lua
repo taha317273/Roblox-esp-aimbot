@@ -2,11 +2,12 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
 local AimPart = "Head"
 local AimEnabled = false
 
--- GUI Butonu (Aimbot aç/kapa)
+-- GUI Oluşturma
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "ESP_Aimbot_Gui"
 ScreenGui.ResetOnSpawn = false
@@ -23,6 +24,45 @@ Button.Font = Enum.Font.GothamBold
 Button.Text = "Aimbot OFF"
 Button.Parent = ScreenGui
 
+-- Buton sürükleme fonksiyonu
+local dragging
+local dragInput
+local dragStart
+local startPos
+
+local function update(input)
+    local delta = input.Position - dragStart
+    Button.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X,
+                              startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
+
+Button.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = Button.Position
+
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+Button.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        update(input)
+    end
+end)
+
+-- Aimbot aç/kapa
 Button.MouseButton1Click:Connect(function()
     AimEnabled = not AimEnabled
     if AimEnabled then
@@ -37,60 +77,65 @@ end)
 -- Gelişmiş ESP fonksiyonu
 local function CreateESP(player)
     if player == LocalPlayer then return end
-    if player.Character and player.Character:FindFirstChild("Head") and player.Character:FindFirstChild("Humanoid") then
-        local head = player.Character.Head
-        local humanoid = player.Character.Humanoid
+    player.CharacterAdded:Connect(function(character)
+        wait(1)
+        local head = character:WaitForChild("Head", 5)
+        local humanoid = character:WaitForChild("Humanoid", 5)
+        if head and humanoid then
+            if not head:FindFirstChild("ESP") then
+                local BillboardGui = Instance.new("BillboardGui")
+                BillboardGui.Name = "ESP"
+                BillboardGui.Size = UDim2.new(0, 120, 0, 60)
+                BillboardGui.Adornee = head
+                BillboardGui.AlwaysOnTop = true
+                BillboardGui.Parent = head
 
-        if not head:FindFirstChild("ESP") then
-            local BillboardGui = Instance.new("BillboardGui")
-            BillboardGui.Name = "ESP"
-            BillboardGui.Size = UDim2.new(0, 120, 0, 60)
-            BillboardGui.Adornee = head
-            BillboardGui.AlwaysOnTop = true
+                local NameLabel = Instance.new("TextLabel", BillboardGui)
+                NameLabel.Name = "NameLabel"
+                NameLabel.Size = UDim2.new(1, 0, 0.5, 0)
+                NameLabel.BackgroundTransparency = 1
+                NameLabel.TextColor3 = Color3.new(1, 0, 0)
+                NameLabel.TextScaled = true
+                NameLabel.Font = Enum.Font.GothamBold
+                NameLabel.Text = player.Name
 
-            -- İsim etiketi
-            local NameLabel = Instance.new("TextLabel", BillboardGui)
-            NameLabel.Name = "NameLabel"
-            NameLabel.Size = UDim2.new(1, 0, 0.5, 0)
-            NameLabel.BackgroundTransparency = 1
-            NameLabel.TextColor3 = Color3.new(1, 0, 0)
-            NameLabel.TextScaled = true
-            NameLabel.Font = Enum.Font.GothamBold
-            NameLabel.Text = player.Name
-            NameLabel.Position = UDim2.new(0, 0, 0, 0)
+                local HealthBarBG = Instance.new("Frame", BillboardGui)
+                HealthBarBG.Name = "HealthBarBG"
+                HealthBarBG.Size = UDim2.new(1, 0, 0.2, 0)
+                HealthBarBG.Position = UDim2.new(0, 0, 0.5, 0)
+                HealthBarBG.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+                HealthBarBG.BorderSizePixel = 0
+                HealthBarBG.BackgroundTransparency = 0.5
+                HealthBarBG.ClipsDescendants = true
 
-            -- Sağlık barı arka planı
-            local HealthBarBG = Instance.new("Frame", BillboardGui)
-            HealthBarBG.Name = "HealthBarBG"
-            HealthBarBG.Size = UDim2.new(1, 0, 0.2, 0)
-            HealthBarBG.Position = UDim2.new(0, 0, 0.5, 0)
-            HealthBarBG.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
-            HealthBarBG.BorderSizePixel = 0
-            HealthBarBG.BackgroundTransparency = 0.5
-            HealthBarBG.ClipsDescendants = true
+                local HealthBar = Instance.new("Frame", HealthBarBG)
+                HealthBar.Name = "HealthBar"
+                HealthBar.Size = UDim2.new(1, 0, 1, 0)
+                HealthBar.BackgroundColor3 = Color3.new(0, 1, 0)
+                HealthBar.BorderSizePixel = 0
 
-            -- Sağlık barı doluluk kısmı
-            local HealthBar = Instance.new("Frame", HealthBarBG)
-            HealthBar.Name = "HealthBar"
-            HealthBar.Size = UDim2.new(1, 0, 1, 0)
-            HealthBar.BackgroundColor3 = Color3.new(0, 1, 0)
-            HealthBar.BorderSizePixel = 0
-
-            -- Mesafe etiketi
-            local DistanceLabel = Instance.new("TextLabel", BillboardGui)
-            DistanceLabel.Name = "DistanceLabel"
-            DistanceLabel.Size = UDim2.new(1, 0, 0.3, 0)
-            DistanceLabel.Position = UDim2.new(0, 0, 0.7, 0)
-            DistanceLabel.BackgroundTransparency = 1
-            DistanceLabel.TextColor3 = Color3.new(1, 1, 1)
-            DistanceLabel.TextScaled = true
-            DistanceLabel.Font = Enum.Font.GothamBold
-            DistanceLabel.Text = "0m"
+                local DistanceLabel = Instance.new("TextLabel", BillboardGui)
+                DistanceLabel.Name = "DistanceLabel"
+                DistanceLabel.Size = UDim2.new(1, 0, 0.3, 0)
+                DistanceLabel.Position = UDim2.new(0, 0, 0.7, 0)
+                DistanceLabel.BackgroundTransparency = 1
+                DistanceLabel.TextColor3 = Color3.new(1, 1, 1)
+                DistanceLabel.TextScaled = true
+                DistanceLabel.Font = Enum.Font.GothamBold
+                DistanceLabel.Text = "0m"
+            end
         end
-    end
+    end)
 end
 
--- ESP Güncelleme (RenderStepped)
+for _, player in pairs(Players:GetPlayers()) do
+    CreateESP(player)
+end
+
+Players.PlayerAdded:Connect(function(player)
+    CreateESP(player)
+end)
+
 RunService.RenderStepped:Connect(function()
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") and player.Character:FindFirstChild("Humanoid") then
@@ -116,29 +161,13 @@ RunService.RenderStepped:Connect(function()
                         healthBar.BackgroundColor3 = Color3.new(1, 0, 0)
                     end
                 end
-                if distanceLabel then
+                if distanceLabel and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
                     local dist = (player.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
                     distanceLabel.Text = string.format("%.0fm", dist)
                 end
             end
         end
     end
-end)
-
--- Mevcut oyunculara ESP ekle
-for _, player in pairs(Players:GetPlayers()) do
-    CreateESP(player)
-    player.CharacterAdded:Connect(function()
-        wait(1)
-        CreateESP(player)
-    end)
-end
-
-Players.PlayerAdded:Connect(function(player)
-    player.CharacterAdded:Connect(function()
-        wait(1)
-        CreateESP(player)
-    end)
 end)
 
 -- En yakın hedefi bul
@@ -163,31 +192,31 @@ local function GetClosestTarget()
     return closestPlayer
 end
 
--- Smooth kamera döndürme
+-- Smooth kamera dönüşü
 local function SmoothLookAt(targetPosition)
     local camera = workspace.CurrentCamera
     local newCFrame = CFrame.new(camera.CFrame.Position, targetPosition)
-
-    local tween = TweenService:Create(camera, TweenInfo.new(0.1, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
+    local tween = TweenService:Create(camera, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
         CFrame = newCFrame
     })
-
     tween:Play()
 end
 
--- Aimbot çalıştırıcı
+-- Aimbot update
 RunService.RenderStepped:Connect(function()
     if AimEnabled then
         local target = GetClosestTarget()
-        if target then
+        if target and target.Character and target.Character:FindFirstChild(AimPart) then
             SmoothLookAt(target.Character[AimPart].Position)
         end
     end
 end)
 
--- Base Timer ESP (Rainbow)
+-- Base Timer Rainbow ESP
+-- Base objesini bul
 local base = workspace:FindFirstChild("Base") or workspace:FindFirstChild("BaseDoor")
 if base then
+    -- Timer isimli NumberValue bekle
     local timerValue = base:FindFirstChild("Timer")
 
     local gui = Instance.new("BillboardGui")
@@ -208,22 +237,15 @@ if base then
     label.Text = "Base Timer: ..."
 
     local hue = 0
-
     RunService.RenderStepped:Connect(function()
         hue = (hue + 0.005) % 1
-        local rainbowColor = Color3.fromHSV(hue, 1, 1)
-        label.TextColor3 = rainbowColor
+        label.TextColor3 = Color3.fromHSV(hue, 1, 1)
 
         if timerValue and timerValue:IsA("NumberValue") then
             local seconds = math.floor(timerValue.Value)
             label.Text = "Base Açılıyor: " .. tostring(seconds) .. " sn"
-        elseif base:FindFirstChild("Timer") and base.Timer:IsA("NumberValue") then
-            timerValue = base.Timer
         else
             label.Text = "Base Açıldı!"
         end
     end)
 end
-
--- Espri mesajı
-print("Emmi burada bir espri patlatıyorum: Roblox'ta uçan aimbot kullananlara selam olsun! 😂")
